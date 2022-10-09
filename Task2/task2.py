@@ -991,6 +991,3 @@ plt.xticks(x, results_all["classifier"], rotation='vertical')
 fig.tight_layout()
 plt.show()
 '''
-
-# + [markdown] pycharm={"name": "#%% md\n"}
-# Test
