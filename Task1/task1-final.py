@@ -30,6 +30,8 @@ import seaborn as sns
 
 # + [markdown] id="XyY6wwS-m62a" pycharm={"name": "#%% md\n"}
 # # Data exploration
+# Test
+#
 # Let's load the training dataset from the corresponding .csv file.
 # Since we know that the columns represent the mean/standard deviation of the positions and angles of the 60 points, respectively, followed by the label name and code, let us rename the columns accordingly to allow for easier reading.
 
