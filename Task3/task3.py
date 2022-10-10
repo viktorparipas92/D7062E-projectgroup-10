@@ -48,36 +48,48 @@ import seaborn as sns
 
 # + id="KNoDyk_fm62a" pycharm={"name": "#%%\n"}
 def load_data():
-  training_data = pd.read_csv('train-final.csv', header=None)
-  test_data = pd.read_csv('test-final.csv', header=None)
+    training_data = pd.read_csv("train-final.csv", header=None)
+    test_data = pd.read_csv("test-final.csv", header=None)
 
-  name_mappings = {
-      # Feature columns
-      **{i:f'positions_mean_{i}' for i in range(60)},
-      **{i:f'positions_std_{i}' for i in range(60, 120)},
-      **{i:f'angles_mean_{i}' for i in range(120, 180)},
-      **{i:f'angles_std_{i}' for i in range(180, 240)},
-      # Label columns
-      **{240: 'label_name', 241: 'label_code'},
-  }
+    name_mappings = {
+        # Feature columns
+        **{i: f"positions_mean_{i}" for i in range(60)},
+        **{i: f"positions_std_{i}" for i in range(60, 120)},
+        **{i: f"angles_mean_{i}" for i in range(120, 180)},
+        **{i: f"angles_std_{i}" for i in range(180, 240)},
+        # Label columns
+        **{240: "label_name", 241: "label_code"},
+    }
 
-  training_data.rename(name_mappings, axis=1, inplace=True)
-  training_feature_columns = training_data.columns[:-2]
+    training_data.rename(name_mappings, axis=1, inplace=True)
+    training_feature_columns = training_data.columns[:-2]
 
-  training_features = training_data[training_feature_columns]
-  training_labels = training_data.label_name
-  training_codes = training_data.label_code
+    training_features = training_data[training_feature_columns]
+    training_labels = training_data.label_name
+    training_codes = training_data.label_code
 
-  test_data.rename(name_mappings, axis=1, inplace=True)
-  test_feature_columns = test_data.columns[:-2]
+    test_data.rename(name_mappings, axis=1, inplace=True)
+    test_feature_columns = test_data.columns[:-2]
 
-  test_features = test_data[test_feature_columns]
-  test_labels = test_data.label_name
+    test_features = test_data[test_feature_columns]
+    test_labels = test_data.label_name
 
-  return training_features, training_labels, training_codes, test_features, test_labels
+    return (
+        training_features,
+        training_labels,
+        training_codes,
+        test_features,
+        test_labels,
+    )
 
 
-training_features, training_labels, training_codes, test_features, test_labels = load_data()
+(
+    training_features,
+    training_labels,
+    training_codes,
+    test_features,
+    test_labels,
+) = load_data()
 
 # + [markdown] id="_aYlx2ckm62b" pycharm={"name": "#%% md\n"}
 # Let's show some of the data
@@ -99,7 +111,7 @@ number_of_classes
 # Now let's take a look at how many occurrences we have of each label.
 
 # + colab={"base_uri": "https://localhost:8080/", "height": 105} id="_O-CkrFfm62d" outputId="4cbe1fc0-4e16-4806-958e-d06588b83de2" pycharm={"name": "#%%\n"}
-training_labels.value_counts().plot(kind='bar', figsize=(10, 4))
+training_labels.value_counts().plot(kind="bar", figsize=(10, 4))
 
 # + [markdown] id="YlISrYJpm62d" pycharm={"name": "#%% md\n"}
 # We can see that `child` is the most common label in the training dataset and that `go` is the least common label.
@@ -114,12 +126,10 @@ columns_null_sum = training_features.isnull().sum()
 columns_with_nulls = columns_null_sum[columns_null_sum > 0]
 
 print(
-    "Total amount of missing values in the dataframe:", 
-    training_features.isnull().sum().sum()
+    "Total amount of missing values in the dataframe:",
+    training_features.isnull().sum().sum(),
 )
-print(
-    "Missing values in the following column indexes (and missing value count):"
-)
+print("Missing values in the following column indexes (and missing value count):")
 print(columns_with_nulls)
 
 # + [markdown] pycharm={"name": "#%% md\n"}
@@ -137,8 +147,8 @@ print(columns_with_nulls)
 # We start by doing a boxplot for all features to get a visual indication of the outlier situation.
 
 # + pycharm={"name": "#%%\n"}
-training_features.boxplot(figsize=(18,7))
-plt.xticks([1], [''])
+training_features.boxplot(figsize=(18, 7))
+plt.xticks([1], [""])
 
 # + [markdown] pycharm={"name": "#%% md\n"}
 # Based on the boxplot, there appears to be many columns with outliers. Many classifiers, e.g. linear classifiers like Logistic Regression will not handle outliers well, so we need to find a way to handle also outliers.
@@ -149,12 +159,12 @@ plt.xticks([1], [''])
 # + [markdown] pycharm={"name": "#%% md\n"}
 # ### Outliers
 #
-# As we saw in the boxplot above, there are many columns with outliers. And while there are many methods to detect outliers,let's begin with just identifying the **values** that are farthest from the mean. 
+# As we saw in the boxplot above, there are many columns with outliers. And while there are many methods to detect outliers,let's begin with just identifying the **values** that are farthest from the mean.
 #
 # A simple approach is to identify the values that lie outside of 3$\sigma$ (that is, three times the standard deviation) as outliers, and drop the rows that have at least one outlier. Let's give it a try.
 
 # + pycharm={"name": "#%%\n"}
-#training_features_outliers_marked = training_features[abs(training_features) <= 3]
+# training_features_outliers_marked = training_features[abs(training_features) <= 3]
 from scipy import stats
 
 training_features_outliers_marked = training_features[
@@ -166,8 +176,8 @@ training_features_outliers_marked.head()
 
 # + pycharm={"name": "#%%\n"}
 training_features_outliers_removed = training_features_outliers_marked.dropna()
-training_features_outliers_removed.boxplot(figsize=(18,7))
-plt.xticks([1], [''])
+training_features_outliers_removed.boxplot(figsize=(18, 7))
+plt.xticks([1], [""])
 print("Number of rows left", training_features_outliers_removed.shape[0])
 
 
@@ -179,22 +189,22 @@ print("Number of rows left", training_features_outliers_removed.shape[0])
 
 # + pycharm={"name": "#%%\n"}
 def pipeline_outliers(df, std_cap=3):
-  df = df.copy()
+    df = df.copy()
 
-  for column in df.columns:
+    for column in df.columns:
 
-    mean = df[column].mean(skipna = True)
-    std = df[column].std(skipna = True)
-    
-    df[column] = np.clip(df[column], -(mean + std_cap*std), mean + std_cap*std)
+        mean = df[column].mean(skipna=True)
+        std = df[column].std(skipna=True)
 
-  return df
+        df[column] = np.clip(df[column], -(mean + std_cap * std), mean + std_cap * std)
+
+    return df
 
 
 # + pycharm={"name": "#%%\n"}
 df = pipeline_outliers(training_features)
-df.boxplot(figsize=(18,7))
-plt.xticks([1], [''])
+df.boxplot(figsize=(18, 7))
+plt.xticks([1], [""])
 
 
 # + [markdown] pycharm={"name": "#%% md\n"}
@@ -218,9 +228,7 @@ def plot_distributions_for_columns(dataframe, columns):
 
     for index, column in enumerate(columns):
         # plot a histogram of the column for the first row
-        dataframe[column].plot(
-            kind='hist', ax=axes[0, index], title=column, bins=15
-        )
+        dataframe[column].plot(kind="hist", ax=axes[0, index], title=column, bins=15)
         # Do a box plot as well
         sns.boxplot(y=dataframe[column], ax=axes[1, index]).set_title(column)
 
@@ -244,26 +252,27 @@ plot_distributions_for_columns(training_features, columns_with_nulls.index)
 # + pycharm={"name": "#%%\n"}
 from sklearn.impute import KNNImputer, SimpleImputer
 
+
 def impute(dataframe, imputer_class, **kwargs):
     imputer = imputer_class(**kwargs)
     dataframe = dataframe.copy()
     dataframe[dataframe.columns] = imputer.fit_transform(dataframe.values)
     return dataframe
 
+
 # KNN imputation
 def impute_knn(dataframe):
-    return impute(dataframe, KNNImputer, n_neighbors=2, weights='uniform')
+    return impute(dataframe, KNNImputer, n_neighbors=2, weights="uniform")
+
 
 # Drop rows
 def impute_drop_rows(dataframe):
     return dataframe.dropna()
 
+
 # Mean imputation
 def impute_mean(dataframe):
-    return impute(
-        dataframe, SimpleImputer, missing_values=np.nan, strategy='mean'
-    )
-
+    return impute(dataframe, SimpleImputer, missing_values=np.nan, strategy="mean")
 
 
 # + [markdown] pycharm={"name": "#%% md\n"}
@@ -274,7 +283,7 @@ columns_null_sum = training_features.isnull().sum()
 columns_with_nulls = columns_null_sum[columns_null_sum > 0]
 
 # + pycharm={"name": "#%%\n"}
-#training_features = training_data[training_feature_columns]
+# training_features = training_data[training_feature_columns]
 all_na_values = training_features.isna()
 
 # + [markdown] pycharm={"name": "#%% md\n"}
@@ -301,7 +310,7 @@ differences = (
     training_data_mean_imputed.values[all_na_values]
     - training_data_knn_imputed.values[all_na_values]
 )
-plt.hist(differences);
+plt.hist(differences)
 
 # + [markdown] pycharm={"name": "#%% md\n"}
 # We can conclude that the differences between the methods are not significant, the mode is close to zero, for most of the missing values the two methods give very similar imputed values - more than half of the values are in the range [-0.1,0.1]
@@ -312,20 +321,18 @@ plt.hist(differences);
 # + pycharm={"name": "#%%\n"}
 na_rows, na_columns = np.where(all_na_values)
 dataframe_differences_columns = pd.DataFrame(
-    {'diff': differences, 'column': training_features.columns[na_columns]}
+    {"diff": differences, "column": training_features.columns[na_columns]}
 )
 
 fig, axs = plt.subplots(ncols=2)
 
-axis = sns.boxplot(
-    x='column', data=dataframe_differences_columns, y='diff', ax=axs[0]
-)
-axis.set_xticklabels(axis.get_xticklabels(), rotation=90);
+axis = sns.boxplot(x="column", data=dataframe_differences_columns, y="diff", ax=axs[0])
+axis.set_xticklabels(axis.get_xticklabels(), rotation=90)
 
 axis = sns.swarmplot(
-    x='column', data=dataframe_differences_columns, y='diff', ax=axs[1]
+    x="column", data=dataframe_differences_columns, y="diff", ax=axs[1]
 )
-axis.set_xticklabels(axis.get_xticklabels(), rotation=90);
+axis.set_xticklabels(axis.get_xticklabels(), rotation=90)
 
 fig.tight_layout()
 
@@ -342,22 +349,22 @@ fig.tight_layout()
 
 # + pycharm={"name": "#%%\n"}
 # Let's create a pipeline function that uses the KNN imputation
-def pipeline_missing_values(df, method = "knn"):
-  df = df.copy()
-  
-  columns_null_sum = df.isnull().sum()
-  columns_with_nulls = columns_null_sum[columns_null_sum > 0]
+def pipeline_missing_values(df, method="knn"):
+    df = df.copy()
 
-  if method == "knn":
-    df[columns_with_nulls.index] = impute_knn(df[columns_with_nulls.index])
-  elif method == "mean":
-    df[columns_with_nulls.index] = impute_mean(df[columns_with_nulls.index])
-  else:
-    raise f"Unknown method {method}"
+    columns_null_sum = df.isnull().sum()
+    columns_with_nulls = columns_null_sum[columns_null_sum > 0]
 
-  assert df.isnull().sum().sum() == 0
+    if method == "knn":
+        df[columns_with_nulls.index] = impute_knn(df[columns_with_nulls.index])
+    elif method == "mean":
+        df[columns_with_nulls.index] = impute_mean(df[columns_with_nulls.index])
+    else:
+        raise f"Unknown method {method}"
 
-  return df
+    assert df.isnull().sum().sum() == 0
+
+    return df
 
 
 # + [markdown] pycharm={"name": "#%% md\n"}
@@ -369,7 +376,7 @@ def pipeline_missing_values(df, method = "knn"):
 
 # + pycharm={"name": "#%%\n"}
 training_features.boxplot(figsize=(18, 7))
-plt.xticks([1], [''])
+plt.xticks([1], [""])
 
 
 # + [markdown] pycharm={"name": "#%% md\n"}
@@ -392,7 +399,7 @@ training_features_scaled.head()
 
 # + pycharm={"name": "#%%\n"}
 training_features_scaled.boxplot(figsize=(18, 7))
-plt.xticks([1], [''])
+plt.xticks([1], [""])
 
 # + [markdown] pycharm={"name": "#%% md\n"}
 # ## Pipeline
@@ -402,53 +409,60 @@ plt.xticks([1], [''])
 
 # + pycharm={"name": "#%%\n"}
 # Load the data
-training_features, training_labels, training_codes, test_features, test_labels = load_data()
+(
+    training_features,
+    training_labels,
+    training_codes,
+    test_features,
+    test_labels,
+) = load_data()
 
 # Plot before pipeline
 training_features.boxplot(figsize=(18, 7))
-plt.xticks([1], [''])
+plt.xticks([1], [""])
 
 # + pycharm={"name": "#%%\n"}
 test_features.boxplot(figsize=(18, 7))
-plt.xticks([1], [''])
+plt.xticks([1], [""])
 
 
 # + [markdown] pycharm={"name": "#%% md\n"}
 # Run the pipeline and rerun the boxplot on the resulting dataset
 
 # + pycharm={"name": "#%%\n"}
-def run_data_pipeline(features, std_cap = 3, impute_method = "knn"):
-  df = pipeline_outliers(features, std_cap=std_cap)
-  df = pipeline_missing_values(df, method = impute_method)
-  df = pipeline_scale(df)
+def run_data_pipeline(features, std_cap=3, impute_method="knn"):
+    df = pipeline_outliers(features, std_cap=std_cap)
+    df = pipeline_missing_values(df, method=impute_method)
+    df = pipeline_scale(df)
 
-  return df
+    return df
+
 
 train_df = run_data_pipeline(training_features)
 train_df.boxplot(figsize=(18, 7))
-plt.xticks([1], [''])
+plt.xticks([1], [""])
 
 # + pycharm={"name": "#%%\n"}
 test_df = run_data_pipeline(test_features)
 
 test_df.boxplot(figsize=(18, 7))
-plt.xticks([1], [''])
+plt.xticks([1], [""])
 
 # + [markdown] pycharm={"name": "#%% md\n"}
 # #Task 2
 
 # + [markdown] pycharm={"name": "#%% md\n"}
-# The following observations have been made of the dataset and affects how models should be trained: 
+# The following observations have been made of the dataset and affects how models should be trained:
 #
 # - There are low number, less than 30, of samples per class. As such, overfitting will likely be a problem with more advanced classifiers like decision trees, for example. To address this, we will use a Cross Validation method to evaluate the fit. Furthermore, to ensure we have the same distribution in each fold of the CV, a stratified fold method will be used.
-# - The data set is very 'wide' - that is there are a very large amount of features (240) compared to the number of samples (540). To address this, a feature reduction will be used. There are many options for reducing features, such as removing features with strong correlation, low variance or fitting a classifier and removing those features that have low importance. Dimensionality reduction approaches are also common, such as Principal Component Analysis, for example. 
+# - The data set is very 'wide' - that is there are a very large amount of features (240) compared to the number of samples (540). To address this, a feature reduction will be used. There are many options for reducing features, such as removing features with strong correlation, low variance or fitting a classifier and removing those features that have low importance. Dimensionality reduction approaches are also common, such as Principal Component Analysis, for example.
 # - We will compare RFE to PCA, and select the best performing option.
 
 # + [markdown] pycharm={"name": "#%% md\n"}
 # ## Feature reduction
 
 # + [markdown] pycharm={"name": "#%% md\n"}
-# ### RFE 
+# ### RFE
 #
 # To reduce features, we have selected a Recursive Feature Elimination method using a Support Vector Machine classifier. The reason for selecting a SVM classifier is the combination of speed and the ability to capture non-linearities in the dataset.
 
@@ -457,15 +471,20 @@ from sklearn.model_selection import GridSearchCV, StratifiedKFold
 from sklearn.feature_selection import RFECV
 from sklearn import svm
 
-train_df = run_data_pipeline(training_features, std_cap = 6, impute_method="mean")
+train_df = run_data_pipeline(training_features, std_cap=6, impute_method="mean")
 
 from sklearn.linear_model import LogisticRegression
 
+
 def reduce(n_feats):
 
-    rfe_selector = RFECV(estimator=svm.SVC(kernel = 'linear'), 
-                        cv = StratifiedKFold(n_splits = 10), 
-                        min_features_to_select = n_feats, step = 1, n_jobs=4)
+    rfe_selector = RFECV(
+        estimator=svm.SVC(kernel="linear"),
+        cv=StratifiedKFold(n_splits=10),
+        min_features_to_select=n_feats,
+        step=1,
+        n_jobs=4,
+    )
 
     rfe_selector.fit(train_df, training_labels)
 
@@ -475,6 +494,7 @@ def reduce(n_feats):
     print(n_feats, len(selected_cols), score)
 
     return selected_cols, score
+
 
 # Evaluate a few different minimum features to select
 rfe_results = [reduce(n) for n in [15, 45]]
@@ -496,9 +516,7 @@ from sklearn.preprocessing import StandardScaler
 pca = PCA()
 
 pipe = Pipeline(steps=[("pca", pca), ("svm", svm.SVC(kernel="linear"))])
-param_grid = {
-    "pca__n_components": np.arange(10,100,5)
-}
+param_grid = {"pca__n_components": np.arange(10, 100, 5)}
 search = GridSearchCV(pipe, param_grid, cv=10, n_jobs=4)
 search.fit(train_df, training_labels)
 
@@ -514,8 +532,8 @@ print(search.best_params_)
 # The RFE approach gives us higher accuracy with fewer features than PCA, so we will select the RFE approach instead.
 
 # + pycharm={"name": "#%%\n"}
-rfe_best_ix = np.argmin([score for _,score in rfe_results])
-rfe_columns,_ = rfe_results[rfe_best_ix]
+rfe_best_ix = np.argmin([score for _, score in rfe_results])
+rfe_columns, _ = rfe_results[rfe_best_ix]
 
 train_reduced_df = train_df[train_df.columns[rfe_columns]]
 test_reduced_df = test_df[test_df.columns[rfe_columns]]
@@ -526,6 +544,7 @@ test_reduced_df = test_df[test_df.columns[rfe_columns]]
 
 # + pycharm={"name": "#%%\n"}
 import warnings
+
 warnings.filterwarnings("ignore")
 
 from sklearn.linear_model import LogisticRegression
@@ -553,32 +572,43 @@ from sklearn.model_selection import cross_validate
 # + pycharm={"name": "#%%\n"}
 def evaluate_all_classifiers(train_df):
     classifiers = [
-    LogisticRegression(),
-    DecisionTreeClassifier(),
-    RandomForestClassifier(),
-    SVC(),
-    KNeighborsClassifier(),
-    GaussianNB(),
-    GradientBoostingClassifier(),
-    AdaBoostClassifier(),
-    BaggingClassifier(),
-    ExtraTreesClassifier(),
-    MLPClassifier(),
-    # use dummy classifier to get a baseline
-    DummyClassifier(strategy="most_frequent")
+        LogisticRegression(),
+        DecisionTreeClassifier(),
+        RandomForestClassifier(),
+        SVC(),
+        KNeighborsClassifier(),
+        GaussianNB(),
+        GradientBoostingClassifier(),
+        AdaBoostClassifier(),
+        BaggingClassifier(),
+        ExtraTreesClassifier(),
+        MLPClassifier(),
+        # use dummy classifier to get a baseline
+        DummyClassifier(strategy="most_frequent"),
     ]
 
     all_results = []
 
-    scoring =["accuracy","precision_macro", "recall_macro", "f1_macro"]
+    scoring = ["accuracy", "precision_macro", "recall_macro", "f1_macro"]
 
     for clf in classifiers:
 
-        scores = cross_validate(clf, train_df, training_labels, scoring=scoring, cv=10, return_train_score = True)
+        scores = cross_validate(
+            clf,
+            train_df,
+            training_labels,
+            scoring=scoring,
+            cv=10,
+            return_train_score=True,
+        )
 
-        print(f"Classifier: {clf.__class__.__name__}", "test accuracy", np.mean(scores["test_accuracy"]))
+        print(
+            f"Classifier: {clf.__class__.__name__}",
+            "test accuracy",
+            np.mean(scores["test_accuracy"]),
+        )
 
-        scores_mean = {a:np.mean(scores[a]) for a in scores.keys()}
+        scores_mean = {a: np.mean(scores[a]) for a in scores.keys()}
         scores_mean["classifier"] = clf.__class__.__name__
 
         # save the evaluation results in a dataframe
@@ -586,14 +616,14 @@ def evaluate_all_classifiers(train_df):
 
     return pd.concat(all_results)
 
-results = evaluate_all_classifiers(train_reduced_df)
 
+results = evaluate_all_classifiers(train_reduced_df)
 
 # + [markdown] pycharm={"name": "#%% md\n"}
 # ###Baseline scores
 
 # + pycharm={"name": "#%%\n"}
-results.sort_values(by=['test_accuracy'])
+results.sort_values(by=["test_accuracy"])
 
 # + [markdown] pycharm={"name": "#%% md\n"}
 # ###Conclusion
@@ -611,16 +641,24 @@ results.sort_values(by=['test_accuracy'])
 #
 
 # + pycharm={"name": "#%%\n"}
-param_grid = {'n_estimators': np.arange(95,105,1),
-               'max_depth': [15,16,17,18],
-               'bootstrap': [False, True]}
+param_grid = {
+    "n_estimators": np.arange(95, 105, 1),
+    "max_depth": [15, 16, 17, 18],
+    "bootstrap": [False, True],
+}
 
 cv = StratifiedKFold(n_splits=10)
 
-searchCV = GridSearchCV(estimator=ExtraTreesClassifier(random_state=42), scoring='accuracy', cv=cv, param_grid=param_grid, verbose=True, n_jobs = 4)
+searchCV = GridSearchCV(
+    estimator=ExtraTreesClassifier(random_state=42),
+    scoring="accuracy",
+    cv=cv,
+    param_grid=param_grid,
+    verbose=True,
+    n_jobs=4,
+)
 
 searchCV.fit(train_reduced_df, training_labels)
-
 
 # + colab={"base_uri": "https://localhost:8080/"} id="cJkq4YOvlH5p" outputId="943cf488-11ff-45e3-f318-d31245cbb59e"
 searchCV.best_params_, searchCV.best_score_
@@ -660,48 +698,71 @@ searchCV.best_params_, searchCV.best_score_
 # + colab={"base_uri": "https://localhost:8080/"} id="k4TpwHjy6TQB" outputId="ca4e02b2-d1dc-44f9-ca7c-cd139528ecc9"
 from sklearn.metrics import accuracy_score
 
-def evaluate_models(training_features, training_labels, test_features, test_labels, classifiers):
+
+def evaluate_models(
+    training_features, training_labels, test_features, test_labels, classifiers
+):
     prediction_scores = {}
 
     for index, clf in enumerate(classifiers):
-      clf.fit(training_features, training_labels)
-      prediction = clf.predict(test_features)
-      prediction_scores[clf.__class__.__name__] = (accuracy_score(test_labels, prediction))
-    return(prediction_scores)
+        clf.fit(training_features, training_labels)
+        prediction = clf.predict(test_features)
+        prediction_scores[clf.__class__.__name__] = accuracy_score(
+            test_labels, prediction
+        )
+    return prediction_scores
+
 
 class ExtraTreesClassifier_Finetuned(ExtraTreesClassifier):
-
     def __init__(self):
-      ExtraTreesClassifier.__init__(self, n_estimators=102, max_depth=18, random_state=42)
+        ExtraTreesClassifier.__init__(
+            self, n_estimators=102, max_depth=18, random_state=42
+        )
+
 
 classifiers = [
-      ExtraTreesClassifier(),
-      ExtraTreesClassifier_Finetuned(),
-      LogisticRegression(),
-      MLPClassifier(),
-      SVC(),
-      RandomForestClassifier()
-      ]
+    ExtraTreesClassifier(),
+    ExtraTreesClassifier_Finetuned(),
+    LogisticRegression(),
+    MLPClassifier(),
+    SVC(),
+    RandomForestClassifier(),
+]
 
-prediction_scores = evaluate_models(train_reduced_df, training_labels, test_reduced_df, test_labels, classifiers)
+prediction_scores = evaluate_models(
+    train_reduced_df, training_labels, test_reduced_df, test_labels, classifiers
+)
 prediction_scores
 
 # + [markdown] id="038LRiOz1jOz"
-# Plot the performance (accuracy) of the classifiers on the train vs test dataset. 
+# Plot the performance (accuracy) of the classifiers on the train vs test dataset.
 
 # + colab={"base_uri": "https://localhost:8080/", "height": 641} id="JbbhnBkqxkmw" outputId="9fdc2501-8453-49f0-8aba-01846dc9759a"
 
-classifiers = ['ExtraTreesClassifier', 
-               'ExtraTreesClassifier_Finetuned', 
-               'LogisticRegression',
-               'MLPClassifier',
-                'SVC',
-                'RandomForestClassifier']
+classifiers = [
+    "ExtraTreesClassifier",
+    "ExtraTreesClassifier_Finetuned",
+    "LogisticRegression",
+    "MLPClassifier",
+    "SVC",
+    "RandomForestClassifier",
+]
 
 N = len(classifiers)
 
-train_results_df = pd.concat([results, pd.DataFrame([{"classifier": "ExtraTreesClassifier_Finetuned", 
-                                                 "test_accuracy" : searchCV.best_score_}])])
+train_results_df = pd.concat(
+    [
+        results,
+        pd.DataFrame(
+            [
+                {
+                    "classifier": "ExtraTreesClassifier_Finetuned",
+                    "test_accuracy": searchCV.best_score_,
+                }
+            ]
+        ),
+    ]
+)
 
 train_results_df = train_results_df.set_index("classifier")
 
@@ -714,29 +775,34 @@ orange_bar = [prediction_scores[c] for c in classifiers]
 ind = np.arange(N)
 
 # Figure size
-plt.figure(figsize=(15,8))
+plt.figure(figsize=(15, 8))
 
-# Width of a bar 
-width = 0.3       
+# Width of a bar
+width = 0.3
 
 # Plotting
-plt.bar(ind, blue_bar , width, label='Train')
-plt.bar(ind + width, orange_bar, width, label='Test')
+plt.bar(ind, blue_bar, width, label="Train")
+plt.bar(ind + width, orange_bar, width, label="Test")
 
-plt.ylabel('Accuracy')
-plt.title('Accuracy on train vs test sets')
+plt.ylabel("Accuracy")
+plt.title("Accuracy on train vs test sets")
 
-plt.xticks(ind + width / 2, ('ExtraTreesClassifier', 
-                             'ExtraTreesClassifier_Finetuned', 
-                             'LogisticRegression',
-                              'MLPClassifier',
-                             'SVC',
-                             'RandomForestClassifier'),
-           rotation = 90)
+plt.xticks(
+    ind + width / 2,
+    (
+        "ExtraTreesClassifier",
+        "ExtraTreesClassifier_Finetuned",
+        "LogisticRegression",
+        "MLPClassifier",
+        "SVC",
+        "RandomForestClassifier",
+    ),
+    rotation=90,
+)
 
 
 # Finding the best position for legends and putting it
-plt.legend(loc='best')
+plt.legend(loc="best")
 plt.show()
 
 # + [markdown] id="7l_q9R26jeQU" pycharm={"name": "#%% md\n"}
