@@ -13,7 +13,7 @@
 #     name: python3
 # ---
 
-# + [markdown] pycharm={"name": "#%% md\n"}
+# + [markdown] id="VqtF_yiLtQqU"
 # # D7062E Project
 # ## Project Group 10
 #
@@ -23,17 +23,17 @@
 # - Jerker ÅBERG
 # - Kristofer ÅGREN
 
-# + [markdown] pycharm={"name": "#%% md\n"}
+# + [markdown] id="xsm10C7KRTiq"
 # #Task 1
 
-# + [markdown] pycharm={"name": "#%% md\n"}
+# + [markdown] id="sNw45BR0m62X" pycharm={"name": "#%% md\n"}
 # ## Importing dependencies
 # We used the following libraries in the first task:
 # - `pandas` to manipulate the data
 # - `scikit-learn` for imputing and scaling the data
 # - `seaborn` and `matplotlib` for visualization.
 
-# + pycharm={"name": "#%%\n"}
+# + id="4CRS48qom62Z" pycharm={"name": "#%%\n"}
 import pandas as pd
 from sklearn import preprocessing
 import numpy as np
@@ -41,12 +41,12 @@ from matplotlib import pyplot as plt
 import seaborn as sns
 
 
-# + [markdown] pycharm={"name": "#%% md\n"}
+# + [markdown] id="XyY6wwS-m62a" pycharm={"name": "#%% md\n"}
 # ## Data exploration
 # Let's load the training dataset from the corresponding .csv file.
 # Since we know that the columns represent the mean/standard deviation of the positions and angles of the 60 points, respectively, followed by the label name and code, let us rename the columns accordingly to allow for easier reading.
 
-# + pycharm={"name": "#%%\n"}
+# + id="KNoDyk_fm62a" pycharm={"name": "#%%\n"}
 def load_data():
   training_data = pd.read_csv('train-final.csv', header=None)
   test_data = pd.read_csv('test-final.csv', header=None)
@@ -79,32 +79,32 @@ def load_data():
 
 training_features, training_labels, training_codes, test_features, test_labels = load_data()
 
-# + [markdown] pycharm={"name": "#%% md\n"}
+# + [markdown] id="_aYlx2ckm62b" pycharm={"name": "#%% md\n"}
 # Let's show some of the data
 
-# + pycharm={"name": "#%%\n"}
+# + colab={"base_uri": "https://localhost:8080/", "height": 297} id="paURPIp3m62b" outputId="102ad24b-79dd-472f-ad48-2057138a03cb" pycharm={"name": "#%%\n"}
 training_features.head()
 
-# + pycharm={"name": "#%%\n"}
+# + colab={"base_uri": "https://localhost:8080/", "height": 297} id="Yir2V2VRJNj8" outputId="c28b183b-7f81-4e3b-9201-0b14fb36a3d8"
 test_features.head()
 
-# + [markdown] pycharm={"name": "#%% md\n"}
+# + [markdown] id="DYPTNtFmm62c" pycharm={"name": "#%% md\n"}
 # How many different labels do we have in the training dataset?
 
-# + pycharm={"name": "#%%\n"}
+# + colab={"base_uri": "https://localhost:8080/"} id="l8hDw1bgm62c" outputId="af813f76-d6f9-44a6-a795-08df9a221105" pycharm={"name": "#%%\n"}
 number_of_classes = training_labels.nunique()
 number_of_classes
 
-# + [markdown] pycharm={"name": "#%% md\n"}
+# + [markdown] id="2NwxuXvqm62c" pycharm={"name": "#%% md\n"}
 # Now let's take a look at how many occurrences we have of each label.
 
-# + pycharm={"name": "#%%\n"}
+# + colab={"base_uri": "https://localhost:8080/", "height": 105} id="_O-CkrFfm62d" outputId="4cbe1fc0-4e16-4806-958e-d06588b83de2" pycharm={"name": "#%%\n"}
 training_labels.value_counts().plot(kind='bar', figsize=(10, 4))
 
-# + [markdown] pycharm={"name": "#%% md\n"}
+# + [markdown] id="YlISrYJpm62d" pycharm={"name": "#%% md\n"}
 # We can see that `child` is the most common label in the training dataset and that `go` is the least common label.
 
-# + [markdown] pycharm={"name": "#%% md\n"}
+# + [markdown] id="AhOTmkwRm62d" pycharm={"name": "#%% md\n"}
 # Now let's look for columns that have missing values. The missing values are in the following columns (along with the missing value count):
 #
 
@@ -121,7 +121,6 @@ print(
     "Missing values in the following column indexes (and missing value count):"
 )
 print(columns_with_nulls)
-
 
 # + [markdown] pycharm={"name": "#%% md\n"}
 # Some classifiers are more sensitive to the range, mean & outliers of the features, such as linear regression models, for example.
@@ -590,7 +589,6 @@ def evaluate_all_classifiers(train_df):
 results = evaluate_all_classifiers(train_reduced_df)
 
 
-
 # + [markdown] pycharm={"name": "#%% md\n"}
 # ###Baseline scores
 
@@ -624,11 +622,10 @@ searchCV = GridSearchCV(estimator=ExtraTreesClassifier(random_state=42), scoring
 searchCV.fit(train_reduced_df, training_labels)
 
 
-
-# + pycharm={"name": "#%%\n"}
+# + colab={"base_uri": "https://localhost:8080/"} id="cJkq4YOvlH5p" outputId="943cf488-11ff-45e3-f318-d31245cbb59e"
 searchCV.best_params_, searchCV.best_score_
 
-# + [markdown] pycharm={"name": "#%% md\n"}
+# + [markdown] id="LxCxIz99k3jO"
 # This gives the following best parameters to use in the evaluation on the test set:
 #
 #
@@ -637,13 +634,13 @@ searchCV.best_params_, searchCV.best_score_
 #
 #
 
-# + [markdown] pycharm={"name": "#%% md\n"}
+# + [markdown] id="gRn34X6U6ChX"
 # ##Evaluation on the test set
 
-# + [markdown] pycharm={"name": "#%% md\n"}
+# + [markdown] id="9FnYPBbqWNFd"
 # ###Choice of models to evaluate
 
-# + [markdown] pycharm={"name": "#%% md\n"}
+# + [markdown] id="ndzy5De0WcTn"
 # We choose to evaluate the the models with the top five `test_accuracy` from the model selection section:
 #
 # 1.   `ExtraTreesClassifier` - 0.928
@@ -654,13 +651,13 @@ searchCV.best_params_, searchCV.best_score_
 #
 # After these five models the accuracy starts to drop off a bit.
 
-# + [markdown] pycharm={"name": "#%% md\n"}
+# + [markdown] id="hCygNNbdjjX5"
 # ###Evaluation
 
-# + [markdown] pycharm={"name": "#%% md\n"}
+# + [markdown] id="29wXOtULjnU_"
 # We fit the models to the preprocessed and feature-reduced training set, run predictions on the test set run through the same preprocessing and feature reduction and use `accuracy_score` from `sklearn.metrics` to get the final accuracy scores.
 
-# + pycharm={"name": "#%%\n"}
+# + colab={"base_uri": "https://localhost:8080/"} id="k4TpwHjy6TQB" outputId="ca4e02b2-d1dc-44f9-ca7c-cd139528ecc9"
 from sklearn.metrics import accuracy_score
 
 def evaluate_models(training_features, training_labels, test_features, test_labels, classifiers):
@@ -689,10 +686,10 @@ classifiers = [
 prediction_scores = evaluate_models(train_reduced_df, training_labels, test_reduced_df, test_labels, classifiers)
 prediction_scores
 
-# + [markdown] pycharm={"name": "#%% md\n"}
+# + [markdown] id="038LRiOz1jOz"
 # Plot the performance (accuracy) of the classifiers on the train vs test dataset. 
 
-# + pycharm={"name": "#%%\n"}
+# + colab={"base_uri": "https://localhost:8080/", "height": 641} id="JbbhnBkqxkmw" outputId="9fdc2501-8453-49f0-8aba-01846dc9759a"
 
 classifiers = ['ExtraTreesClassifier', 
                'ExtraTreesClassifier_Finetuned', 
@@ -742,11 +739,11 @@ plt.xticks(ind + width / 2, ('ExtraTreesClassifier',
 plt.legend(loc='best')
 plt.show()
 
-# + [markdown] pycharm={"name": "#%% md\n"}
-# ###Conclusion
+# + [markdown] id="7l_q9R26jeQU" pycharm={"name": "#%% md\n"}
+# ### Conclusion
 #
 
-# + [markdown] pycharm={"name": "#%% md\n"}
+# + [markdown] id="2FhonFTrm94x"
 # The prediction scores for the test set and the scores from the training were fairly close. The use of Cross Validation (and a high number of folds = 10) gave a good estimation of the performance on an unseen dataset.
 #
 # The dataset is very 'wide' with about 2 times the amount of rows/samples as there are features. We attempted two methods of feature/dimensionality reduction, RFE and PCA. RFE proved to work the best on the cross validated train data set.
@@ -758,3 +755,6 @@ plt.show()
 # `RandomForestClassifier` is actually performing a bit better on the test set than on the training set.
 #
 # The tuned `ExtraTreesClassifier` does perform a bit better than the model with standard hyperparameters, it could perhaps be even better with some more tuning. On the other hand, more tuning could also risk overfitting it to the test set, which is why it's probably best to leave it as is.
+
+# + [markdown] pycharm={"name": "#%% md\n"}
+# # Task 3
