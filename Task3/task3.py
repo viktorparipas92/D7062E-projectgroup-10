@@ -24,7 +24,7 @@
 # - Kristofer ÅGREN
 
 # + [markdown] id="xsm10C7KRTiq" pycharm={"name": "#%% md\n"}
-# #Task 1
+# # Task 1
 
 # + [markdown] id="sNw45BR0m62X" pycharm={"name": "#%% md\n"}
 # ## Importing dependencies
@@ -446,6 +446,333 @@ plt.xticks([1], [""])
 # - There is a low number, less than 30, of samples per class. As such, overfitting will likely be a problem with more advanced classifiers like decision trees, for example. To address this, we will use a cross-validation (CV) method to evaluate the fit. Furthermore, to ensure we have the same distribution in each fold of the CV, a stratified fold method will be used.
 #   - A stratified fold means each set contains approximately the same percentage of samples of each target class as the complete set. (Source:
 # [Stratified k-fold](https://scikit-learn.org/stable/modules/cross_validation.html#stratified-k-fold))
+
+# + [markdown] pycharm={"name": "#%% md\n"}
+# ## Model selection
+# First we get a baseline score for some of the available classifiers in `scikit-learn`. The classifiers are imported from `scikit-learn` along with classification metrics for evaluation. The baseline scores are calculated using cross validation with 10 folds.
+#
+# The selected classifiers are
+# - The mandatory ones
+#     - Decision tree
+#     - Random forest
+#     - Support vector machine
+#     - k-nearest neighbors
+#     - Multi-layer perceptron
+# - And a few others
+#     - Gaussian Naive Bayes classifier
+#     - Logistic regression
+#
+# A few words about the other classifiers selected:
+# The Gaussian Naive Bayes classifier implements the *Gaussian Naive Bayes algorithm* for classification. The likelihood of the features is assumed to be Gaussian. The mean and standard deviation parameters are estimated using maximum likelihood.
+#
+# Logistic regression, despite its name, is a linear model for *classification* rather than regression. In this model, the probabilities describing the possible outcomes of a single trial are modeled using a logistic function. Logistic regression is implemented in `LogisticRegression`. This implementation can fit binary, One-vs-Rest, or multinomial logistic regression with optional regularization.
+
+# + pycharm={"name": "#%%\n"}
+import warnings
+
+warnings.filterwarnings("ignore")
+
+from sklearn.dummy import DummyClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neural_network import MLPClassifier
+from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier
+
+from sklearn.model_selection import cross_validate
+
+
+CLASSIFIERS_TASK_2 = [
+    LogisticRegression(),
+    DecisionTreeClassifier(),
+    RandomForestClassifier(),
+    SVC(),
+    KNeighborsClassifier(),
+    GaussianNB(),
+    MLPClassifier(),
+    # use dummy classifier to get a baseline
+    DummyClassifier(strategy="most_frequent"),
+]
+
+
+# + [markdown] pycharm={"name": "#%% md\n"}
+# ### Training and evaluation on the training set
+
+# + [markdown] pycharm={"name": "#%% md\n"}
+# We create a function that trains and evaluates a model for each of the selected classifiers with default hyperparameters and run it on the complete training data set first.
+#
+# We use the `cross_validate` function in `scikit-learn`. It allows specifying multiple metrics for evaluation.
+# It returns a dictionary containing fit-times, score-times (and optionally training scores as well as fitted estimators) in addition to the test score.
+# We chose a 10-fold cross-validation, and the following metrics for scoring:
+# - `accuracy`: $\frac{T}{A}$, i.e. the ratio of true (correct) classifications to all classifications
+# - `precision_macro`: $pr=\frac{TP}{TP+FP}=\frac{TP}{P}$, i.e. the ratio of true positives to all the positive classifications
+# - `recall_macro`: $rec=\frac{TP}{TP+FN}=\frac{TP}{P}$, i.e the ratio of positive instances correctly classified
+# - `f1_macro`: $f_1=2\cdot\frac{pr\cdot rec}{pr+rec}$, i.e. the harmonic mean of the precision and the recall score
+#
+# The `_macro` suffix means that the score is macro-averaged, i.e the metric are calculated for each label, and their unweighted mean is returned, label imbalances are not taken into account. Since there are no huge label imbalances in the dataset, this will suffice.
+#
+# The function stores the means of the precision metrics on the test part of the dataset across all folds.
+
+# + pycharm={"name": "#%%\n"}
+def evaluate_all_classifiers(training_data):
+    all_results = []
+    scoring = ["accuracy", "precision_macro", "recall_macro", "f1_macro"]
+    for classifier in CLASSIFIERS_TASK_2:
+        scores = cross_validate(
+            classifier,
+            training_data,
+            training_labels,
+            scoring=scoring,
+            cv=10,
+            return_train_score=True,
+        )
+
+        scores_mean = {metric: np.mean(scores[metric]) for metric in scores.keys()}
+        scores_mean["classifier"] = classifier.__class__.__name__
+        all_results.append(pd.DataFrame([scores_mean]))
+
+    return pd.concat(all_results)
+
+
+# + [markdown] pycharm={"name": "#%% md\n"}
+# Now we can run the selected classifiers and evaluate them
+
+# + pycharm={"name": "#%%\n"}
+results = evaluate_all_classifiers(training_data)
+
+# + [markdown] pycharm={"name": "#%% md\n"}
+# ### Baseline scores
+
+# + pycharm={"name": "#%%\n"}
+results.sort_values(by=["test_accuracy"])
+
+# + [markdown] pycharm={"name": "#%% md\n"}
+# ### Conclusion
+# Let's compare the baseline metrics! The metrics on the training part of the data can be disregarded.
+# The `RandomForestClassifier` leads on all 4 scoring metric, with an accuracy of approximately 0.86, followed by `LogisticRegression` and the `MLPClassifier`. The `KNeighborsClassifier` and the `DecisionTreeClassifier` performed rather poorly.
+#
+# The `fit_time` values are less important, but also informative. The better-performing classifiers took significantly longer to fit to the dataset, by 1-2 magnitudes.
+
+# + [markdown] pycharm={"name": "#%% md\n"}
+# ## Fine-tuning models
+
+# + [markdown] pycharm={"name": "#%% md\n"}
+# Next step is to find optimal hyperparameters for the best performing classifier, `RandomForestClassifier`. We will do so by doing a CV Grid Search and will tune the following hyperparameters of the classifier:
+#
+# - `n_estimators`: controls the number of trees in the forest. Higher can give better performance, but may also increase likelihood of overfitting. The default value is 100, so we will probe around that value.
+# - `max_depth`: the maximum depth of the tree. The default value is None, i.e. the max depth is not restricted so we first test a wide range.
+# - `bootstrap`: whether bootstrap samples are used when building trees. If False, the whole dataset is used to build each tree.
+
+# + pycharm={"name": "#%%\n"}
+parameter_grid = {
+    "n_estimators": np.arange(95, 105, 1),
+    "max_depth": np.arange(5, 50, 5),
+    "bootstrap": [False, True],
+}
+
+# + [markdown] pycharm={"name": "#%% md\n"}
+# As we mentioned before, we're using a stratified fold with cross-validation. Since we established that all four metrics gave similar results, let's stick to accuracy for now. In order to produce reproducible results, the random state is fixed to a set number.
+
+# + pycharm={"name": "#%%\n"}
+from sklearn.model_selection import GridSearchCV, StratifiedKFold
+
+
+def fit_grid_search_cross_validation(parameter_grid, dataset, labels):
+    searchCV = GridSearchCV(
+        estimator=RandomForestClassifier(random_state=42),
+        scoring="accuracy",
+        cv=StratifiedKFold(n_splits=10),
+        param_grid=parameter_grid,
+        verbose=True,
+        n_jobs=4,
+    )
+    searchCV.fit(dataset, labels)
+    return searchCV
+
+
+# + pycharm={"name": "#%%\n"}
+searchCV = fit_grid_search_cross_validation(
+    parameter_grid, training_data, training_labels
+)
+
+# + [markdown] pycharm={"name": "#%% md\n"}
+# This gives the following best parameters to use in the evaluation on the test set:
+
+# + pycharm={"name": "#%%\n"}
+best_params1, best_score1 = searchCV.best_params_, searchCV.best_score_
+best_params1, best_score1
+
+# + [markdown] pycharm={"name": "#%% md\n"}
+# The optimal number of estimators (trees) is close to the default value and in the middle of the probed range.
+# It also seems like using the whole dataset to build each tree is beneficial. Let's do one more grid search to find the ideal `max_depth` value:
+#
+
+# + pycharm={"name": "#%%\n"}
+parameter_grid = {
+    "n_estimators": [best_params1["n_estimators"]],
+    "max_depth": np.arange(11, 19, 1),
+    "bootstrap": [best_params1["bootstrap"]],
+}
+searchCV2 = fit_grid_search_cross_validation(
+    parameter_grid, training_data, training_labels
+)
+best_params2, best_score2 = searchCV2.best_params_, searchCV2.best_score_
+best_params2, best_score2
+
+# + [markdown] pycharm={"name": "#%% md\n"}
+# The ideal maximum depth of the tree is still 15, this is the model we're going to evaluate.
+
+# + [markdown] pycharm={"name": "#%% md\n"}
+# ## Evaluation on the test set
+
+# + [markdown] pycharm={"name": "#%% md\n"}
+# ### Choice of models to evaluate
+
+# + [markdown] pycharm={"name": "#%% md\n"}
+# We choose to evaluate the the models with the top five `test_accuracy` from the model selection section:
+#
+# 1.   `RandomForestClassifier`
+# 2.   `LogisticRegression`
+# 3.   `MLPClassifier`
+# 4.   `SVC`
+# 5.   `GaussianNB`
+#
+# After these five models the accuracy starts to drop off a bit.
+
+# + [markdown] pycharm={"name": "#%% md\n"}
+# ### Evaluation
+
+# + [markdown] pycharm={"name": "#%% md\n"}
+# We
+# - fit the models to the preprocessed training set,
+# - run predictions on the test set (run through the same preprocessing)
+# - and use `accuracy_score` from `sklearn.metrics` to get the final accuracy scores.
+
+# + pycharm={"name": "#%%\n"}
+from sklearn.metrics import accuracy_score
+
+
+def evaluate_models(
+    training_features, training_labels, test_features, test_labels, classifiers
+):
+    prediction_scores = {}
+    for index, classifier in enumerate(classifiers):
+        classifier.fit(training_features, training_labels)
+        prediction = classifier.predict(test_features)
+        prediction_scores[classifier.__class__.__name__] = accuracy_score(
+            test_labels, prediction
+        )
+    return prediction_scores
+
+
+class RandomForestClassifierFinetuned(RandomForestClassifier):
+    def __init__(self):
+        RandomForestClassifier.__init__(
+            self,
+            n_estimators=99,
+            max_depth=15,
+            random_state=42,
+            bootstrap=False,
+        )
+
+
+CLASSIFIERS_TASK2_TO_EVALUATE = [
+    RandomForestClassifier(),
+    RandomForestClassifierFinetuned(),
+    LogisticRegression(),
+    MLPClassifier(),
+    SVC(),
+    GaussianNB(),
+]
+
+prediction_scores = evaluate_models(
+    training_data,
+    training_labels,
+    test_data,
+    test_labels,
+    CLASSIFIERS_TASK2_TO_EVALUATE,
+)
+prediction_scores
+
+# + [markdown] pycharm={"name": "#%% md\n"}
+# As we expected the random forest classifier with the fine-tuned hyperparameters produced the highest accuracy on the test set!
+#
+# Let's plot the performance (accuracy) of the classifiers on the train vs test dataset.
+# In order to do that we first concatenate the cross-validation score of the improved random forest model to the existing results.
+
+# + pycharm={"name": "#%%\n"}
+N = len(CLASSIFIERS_TASK2_TO_EVALUATE)
+
+training_results = pd.concat(
+    [
+        results,
+        pd.DataFrame(
+            [
+                {
+                    "classifier": "RandomForestClassifierFinetuned",
+                    "test_accuracy": searchCV2.best_score_,
+                }
+            ]
+        ),
+    ]
+)
+training_results = training_results.set_index("classifier")
+
+# + [markdown] pycharm={"name": "#%% md\n"}
+# And now everything is in place to draw the plot to compare the results
+
+# + pycharm={"name": "#%%\n"}
+classifier_names = [
+    classifier.__class__.__name__ for classifier in CLASSIFIERS_TASK2_TO_EVALUATE
+]
+training_accuracy_scores = training_results.loc[classifier_names][
+    "test_accuracy"
+].values
+test_accuracy_scores = [prediction_scores[c] for c in classifier_names]
+
+# + pycharm={"name": "#%%\n"}
+index = np.arange(N)
+
+plt.figure(figsize=(15, 8))
+BAR_WIDTH = 0.3
+
+plt.bar(index, training_accuracy_scores, BAR_WIDTH, label="Train")
+plt.bar(index + BAR_WIDTH, test_accuracy_scores, BAR_WIDTH, label="Test")
+
+plt.ylabel("Accuracy")
+plt.title("Accuracy on train vs test sets")
+plt.xticks(
+    index + BAR_WIDTH / 2,
+    tuple(CLASSIFIERS_TASK2_TO_EVALUATE),
+    rotation=90,
+)
+plt.legend(loc="best")
+plt.show()
+
+# + [markdown] id="7l_q9R26jeQU" pycharm={"name": "#%% md\n"}
+# ### Conclusion
+#
+
+# + [markdown] id="2FhonFTrm94x" pycharm={"name": "#%% md\n"}
+# The prediction scores for the test set and the scores from the training were fairly close. The use of Cross Validation (and a high number of folds = 10) gave a good estimation of the performance on an unseen dataset.
+#
+# The best performing (in terms of accuracy) classifier on both train & test datasets was the `RandomForestClassifier`, which seems to neither be over- or underfiting, as the scores on both the training and test data are pretty close.
+#
+# The `LogisticRegression` and `SVC` classifiers seem to be over- or underfitting slightly as their scores on the test set are a bit lower than on the training set.
+#
+# The tuned `RandomForestClassifier` does perform a bit better than the model with standard hyperparameters, it could perhaps be even better with some more tuning and feature reduction, as we will see in Task 3. On the other hand, more tuning could also risk overfitting it to the test set, which is why it's probably best to leave it as is.
+
+# + [markdown] pycharm={"name": "#%% md\n"}
+# # Task 3
+
+# + [markdown] pycharm={"name": "#%% md\n"}
+# The following observations have been made of the dataset and affects how models should be trained:
+#
+# - There is a low number, less than 30, of samples per class. As such, overfitting will likely be a problem with more advanced classifiers like decision trees, for example. To address this, we will use a cross-validation (CV) method to evaluate the fit. Furthermore, to ensure we have the same distribution in each fold of the CV, a stratified fold method will be used.
+#   - A stratified fold means each set contains approximately the same percentage of samples of each target class as the complete set. (Source:
+# [Stratified k-fold](https://scikit-learn.org/stable/modules/cross_validation.html#stratified-k-fold))
 # - The data set is very *wide* - that is, there are a very large amount of features (240) compared to the number of samples (540). To address this, a feature reduction will be used. There are many options for reducing features, such as removing features with strong correlation, low variance or fitting a classifier and removing those features that have low importance. Dimensionality reduction approaches are also common, such as Principal Component Analysis (PCA), for example.
 # - We will compare RFE to PCA, and select the best performing option.
 
@@ -541,108 +868,19 @@ rfe_columns, _ = rfe_results[rfe_best_index]
 reduced_training_data = training_data[training_data.columns[rfe_columns]]
 reduced_test_data = test_data[test_data.columns[rfe_columns]]
 
-# + [markdown] pycharm={"name": "#%% md\n"}
-# ## Model selection
-# First we get a baseline score for some of the available classifiers in `scikit-learn`. The classifiers are imported from `scikit-learn` along with classification metrics for evaluation. The baseline scores are calculated using cross validation with 10 folds.
-#
-# The selected classifiers are
-# - The mandatory ones
-#     - Decision tree
-#     - Random forest
-#     - Support vector machine
-#     - k-nearest neighbors
-#     - Multi-layer perceptron
-# - And a few others
-#     - Gaussian Naive Bayes classifier
-#     - Logistic regression
-#
-# A few words about the other classifiers selected:
-# The Gaussian Naive Bayes classifier implements the *Gaussian Naive Bayes algorithm* for classification. The likelihood of the features is assumed to be Gaussian. The mean and standard deviation parameters are estimated using maximum likelihood.
-#
-# Logistic regression, despite its name, is a linear model for *classification* rather than regression. In this model, the probabilities describing the possible outcomes of a single trial are modeled using a logistic function. Logistic regression is implemented in `LogisticRegression`. This implementation can fit binary, One-vs-Rest, or multinomial logistic regression with optional regularization.
-
 # + pycharm={"name": "#%%\n"}
-import warnings
-
-warnings.filterwarnings("ignore")
-
-from sklearn.linear_model import LogisticRegression
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.svm import SVC
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.naive_bayes import GaussianNB
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.ensemble import BaggingClassifier
 from sklearn.ensemble import ExtraTreesClassifier
-from sklearn.neural_network import MLPClassifier
-from sklearn.dummy import DummyClassifier
-
-from sklearn.model_selection import cross_validate
 
 
-# + [markdown] pycharm={"name": "#%% md\n"}
-# ### Training and evaluation on the training set
-
-# + [markdown] pycharm={"name": "#%% md\n"}
-# We create a function that trains and evaluates a model for each of the selected classifiers with default hyperparameters and run it on the feature-reduced training data set.
-
-# + pycharm={"name": "#%%\n"}
-def evaluate_all_classifiers(training_data):
-    classifiers = [
-        LogisticRegression(),
-        DecisionTreeClassifier(),
-        RandomForestClassifier(),
-        SVC(),
-        KNeighborsClassifier(),
-        GaussianNB(),
-        GradientBoostingClassifier(),
-        AdaBoostClassifier(),
-        BaggingClassifier(),
-        ExtraTreesClassifier(),
-        MLPClassifier(),
-        # use dummy classifier to get a baseline
-        DummyClassifier(strategy="most_frequent"),
-    ]
-
-    all_results = []
-    scoring = ["accuracy", "precision_macro", "recall_macro", "f1_macro"]
-    for classifier in classifiers:
-        scores = cross_validate(
-            classifier,
-            training_data,
-            training_labels,
-            scoring=scoring,
-            cv=10,
-            return_train_score=True,
-        )
-
-        print(
-            f"Classifier: {classifier.__class__.__name__}",
-            "test accuracy",
-            np.mean(scores["test_accuracy"]),
-        )
-
-        scores_mean = {fold: np.mean(scores[fold]) for fold in scores.keys()}
-        scores_mean["classifier"] = training_data.__class__.__name__
-        all_results.append(pd.DataFrame([scores_mean]))
-
-    return pd.concat(all_results)
-
-
-results = evaluate_all_classifiers(reduced_training_data)
-
-# + [markdown] pycharm={"name": "#%% md\n"}
-# ### Baseline scores
-
-# + pycharm={"name": "#%%\n"}
-results.sort_values(by=["test_accuracy"])
-
-# + [markdown] pycharm={"name": "#%% md\n"}
-# ### Conclusion
-#
-# The best performing classifier (using CV with 10 folds) is the `ExtraTreeClassifier` with an accuracy of approximately 0.93.
+CLASSIFIERS_TASK_3 = [
+    GradientBoostingClassifier(),
+    AdaBoostClassifier(),
+    BaggingClassifier(),
+    ExtraTreesClassifier(),
+]
 
 # + [markdown] pycharm={"name": "#%% md\n"}
 # ## Fine-tuning models
@@ -679,10 +917,6 @@ searchCV.best_params_, searchCV.best_score_
 
 # + [markdown] pycharm={"name": "#%% md\n"}
 # This gives the following best parameters to use in the evaluation on the test set:
-#
-#
-# 1.   max_depth: 18
-# 2.   n_estimators: 2
 #
 #
 
@@ -811,11 +1045,11 @@ plt.xticks(
 plt.legend(loc="best")
 plt.show()
 
-# + [markdown] id="7l_q9R26jeQU" pycharm={"name": "#%% md\n"}
+# + [markdown] pycharm={"name": "#%% md\n"}
 # ### Conclusion
 #
 
-# + [markdown] id="2FhonFTrm94x" pycharm={"name": "#%% md\n"}
+# + [markdown] pycharm={"name": "#%% md\n"}
 # The prediction scores for the test set and the scores from the training were fairly close. The use of Cross Validation (and a high number of folds = 10) gave a good estimation of the performance on an unseen dataset.
 #
 # The dataset is very 'wide' with about 2 times the amount of rows/samples as there are features. We attempted two methods of feature/dimensionality reduction, RFE and PCA. RFE proved to work the best on the cross validated train data set.
@@ -827,9 +1061,3 @@ plt.show()
 # `RandomForestClassifier` is actually performing a bit better on the test set than on the training set.
 #
 # The tuned `ExtraTreesClassifier` does perform a bit better than the model with standard hyperparameters, it could perhaps be even better with some more tuning. On the other hand, more tuning could also risk overfitting it to the test set, which is why it's probably best to leave it as is.
-
-# + [markdown] pycharm={"name": "#%% md\n"}
-# # Task 3
-
-# + pycharm={"name": "#%%\n"}
-
