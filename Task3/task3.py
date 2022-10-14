@@ -453,9 +453,15 @@ plt.xticks([1], [""])
 # ## Feature reduction
 
 # + [markdown] pycharm={"name": "#%% md\n"}
-# ### RFE
+# ### Recursive feature elimination
 #
-# To reduce features, we have selected a Recursive Feature Elimination method using a Support Vector Machine classifier. The reason for selecting a SVM classifier is the combination of speed and the ability to capture non-linearities in the dataset.
+# To reduce features, we have selected a **Recursive Feature Elimination** (RFE) method using a Support Vector Machine classifier. The reason for selecting a SVM classifier is the combination of speed and the ability to capture non-linearities in the dataset.
+#
+# Given an external estimator that assigns weights to features, the goal of RFE is to select features by recursively considering smaller and smaller sets of features.
+# - First, the estimator is trained on the initial set of features and the importance of each feature is obtained either through any specific attribute or callable.
+# - Then, the least important features are pruned from current set of features.
+# - That procedure is recursively repeated on the pruned set until the desired number of features to select is eventually reached.
+# - RFECV performs RFE in a cross-validation loop to find the optimal number of features.
 
 # + pycharm={"name": "#%%\n"}
 from sklearn.model_selection import GridSearchCV, StratifiedKFold
@@ -466,46 +472,55 @@ from sklearn import svm
 training_data = run_data_pipeline(training_features, std_cap=6, impute_method="mean")
 
 
-def reduce(n_feats, dataframe):
-
+def reduce(minimum_number_features, dataframe):
     rfe_selector = RFECV(
         estimator=svm.SVC(kernel="linear"),
         cv=StratifiedKFold(n_splits=10),
-        min_features_to_select=n_feats,
+        min_features_to_select=minimum_number_features,
         step=1,
         n_jobs=4,
     )
 
     rfe_selector.fit(dataframe, training_labels)
-
-    selected_cols = dataframe.columns[rfe_selector.get_support()]
+    selected_columns = dataframe.columns[rfe_selector.get_support()]
     score = np.mean(rfe_selector.cv_results_["mean_test_score"])
 
-    print(n_feats, len(selected_cols), score)
-
-    return selected_cols, score
+    return selected_columns, score
 
 
-# Evaluate a few different minimum features to select
-rfe_results = [reduce(n, training_data) for n in [15, 45]]
+# + [markdown] pycharm={"name": "#%% md\n"}
+# Since the RFE takes a while, let's evaluate only a few different minimum features to select, and see which one ends up with the highest cross-validation score:
+
+# + pycharm={"name": "#%%\n"}
+rfe_results = []
+for minimum_number_features in [15, 45]:
+    selected_columns, score = reduce(minimum_number_features, training_data)
+    print(minimum_number_features, len(selected_columns), score)
+    rfe_results.append((selected_columns, score))
 
 # + [markdown] pycharm={"name": "#%% md\n"}
 # As seen above, the cross validated performance peaks at 40 selected features, at around an accuracy of 0.851.
 
 # + [markdown] pycharm={"name": "#%% md\n"}
-# ### PCA
+# ### Prinicipal component analysis
 #
-# Let's also look at how PCA would perform, also evaluating it using the same SVM classifiers as in the RFE case and same amount of CV folds (10). Code below is based on sklearn example at https://scikit-learn.org/stable/auto_examples/compose/plot_digits_pipe.html
+# Let's also look at how principal component analysis (PCA) would perform, also evaluating it using the same SVM classifiers as in the RFE case and same amount of CV folds, that is 10.
+# The code below is based on [sklearn example](https://scikit-learn.org/stable/auto_examples/compose/plot_digits_pipe.html)
+#
+# PCA is used to decompose a multivariate dataset in a set of successive orthogonal components that explain a maximum amount of the variance. In scikit-learn, PCA is implemented as a transformer object that learns  components in its fit method, and can be used on new data to project it on these components.
+# (Source: [sklearn user guide](https://scikit-learn.org/stable/modules/decomposition.html#pca))
+#
+# Let's run PCA through a grid search with cross-validation, varying the number of components from 10 to 100 by increments of 5.
+#
 
 # + pycharm={"name": "#%%\n"}
 from sklearn.decomposition import PCA
 from sklearn.pipeline import Pipeline
 
-pca = PCA()
 
-pipe = Pipeline(steps=[("pca", pca), ("svm", svm.SVC(kernel="linear"))])
+pipeline = Pipeline(steps=[("pca", PCA()), ("svm", svm.SVC(kernel="linear"))])
 param_grid = {"pca__n_components": np.arange(10, 100, 5)}
-search = GridSearchCV(pipe, param_grid, cv=10, n_jobs=4)
+search = GridSearchCV(pipeline, param_grid, cv=10, n_jobs=4)
 search.fit(training_data, training_labels)
 
 print("Best parameter (CV score=%0.3f):" % search.best_score_)
@@ -520,15 +535,31 @@ print(search.best_params_)
 # The RFE approach gives us higher accuracy with fewer features than PCA, so we will select the RFE approach instead.
 
 # + pycharm={"name": "#%%\n"}
-rfe_best_ix = np.argmin([score for _, score in rfe_results])
-rfe_columns, _ = rfe_results[rfe_best_ix]
+rfe_best_index = np.argmin([score for _, score in rfe_results])
+rfe_columns, _ = rfe_results[rfe_best_index]
 
-train_reduced_df = training_data[training_data.columns[rfe_columns]]
-test_reduced_df = test_data[test_data.columns[rfe_columns]]
+reduced_training_data = training_data[training_data.columns[rfe_columns]]
+reduced_test_data = test_data[test_data.columns[rfe_columns]]
 
 # + [markdown] pycharm={"name": "#%% md\n"}
 # ## Model selection
-# First we get a baseline score for some of the avaliable classifiers in sklearn. The classifiers are imported from sklearn along with classification metrics for evaluation. The baseline scores are calculated using cross validation with 10 folds.
+# First we get a baseline score for some of the available classifiers in `scikit-learn`. The classifiers are imported from `scikit-learn` along with classification metrics for evaluation. The baseline scores are calculated using cross validation with 10 folds.
+#
+# The selected classifiers are
+# - The mandatory ones
+#     - Decision tree
+#     - Random forest
+#     - Support vector machine
+#     - k-nearest neighbors
+#     - Multi-layer perceptron
+# - And a few others
+#     - Gaussian Naive Bayes classifier
+#     - Logistic regression
+#
+# A few words about the other classifiers selected:
+# The Gaussian Naive Bayes classifier implements the *Gaussian Naive Bayes algorithm* for classification. The likelihood of the features is assumed to be Gaussian. The mean and standard deviation parameters are estimated using maximum likelihood.
+#
+# Logistic regression, despite its name, is a linear model for *classification* rather than regression. In this model, the probabilities describing the possible outcomes of a single trial are modeled using a logistic function. Logistic regression is implemented in `LogisticRegression`. This implementation can fit binary, One-vs-Rest, or multinomial logistic regression with optional regularization.
 
 # + pycharm={"name": "#%%\n"}
 import warnings
@@ -558,7 +589,7 @@ from sklearn.model_selection import cross_validate
 # We create a function that trains and evaluates a model for each of the selected classifiers with default hyperparameters and run it on the feature-reduced training data set.
 
 # + pycharm={"name": "#%%\n"}
-def evaluate_all_classifiers(train_df):
+def evaluate_all_classifiers(training_data):
     classifiers = [
         LogisticRegression(),
         DecisionTreeClassifier(),
@@ -576,14 +607,11 @@ def evaluate_all_classifiers(train_df):
     ]
 
     all_results = []
-
     scoring = ["accuracy", "precision_macro", "recall_macro", "f1_macro"]
-
-    for clf in classifiers:
-
+    for classifier in classifiers:
         scores = cross_validate(
-            clf,
-            train_df,
+            classifier,
+            training_data,
             training_labels,
             scoring=scoring,
             cv=10,
@@ -591,21 +619,19 @@ def evaluate_all_classifiers(train_df):
         )
 
         print(
-            f"Classifier: {clf.__class__.__name__}",
+            f"Classifier: {classifier.__class__.__name__}",
             "test accuracy",
             np.mean(scores["test_accuracy"]),
         )
 
-        scores_mean = {a: np.mean(scores[a]) for a in scores.keys()}
-        scores_mean["classifier"] = clf.__class__.__name__
-
-        # save the evaluation results in a dataframe
+        scores_mean = {fold: np.mean(scores[fold]) for fold in scores.keys()}
+        scores_mean["classifier"] = training_data.__class__.__name__
         all_results.append(pd.DataFrame([scores_mean]))
 
     return pd.concat(all_results)
 
 
-results = evaluate_all_classifiers(train_reduced_df)
+results = evaluate_all_classifiers(reduced_training_data)
 
 # + [markdown] pycharm={"name": "#%% md\n"}
 # ### Baseline scores
@@ -646,7 +672,7 @@ searchCV = GridSearchCV(
     n_jobs=4,
 )
 
-searchCV.fit(train_reduced_df, training_labels)
+searchCV.fit(reduced_training_data, training_labels)
 
 # + pycharm={"name": "#%%\n"}
 searchCV.best_params_, searchCV.best_score_
@@ -691,17 +717,16 @@ def evaluate_models(
     training_features, training_labels, test_features, test_labels, classifiers
 ):
     prediction_scores = {}
-
-    for index, clf in enumerate(classifiers):
-        clf.fit(training_features, training_labels)
-        prediction = clf.predict(test_features)
-        prediction_scores[clf.__class__.__name__] = accuracy_score(
+    for index, classifier in enumerate(classifiers):
+        classifier.fit(training_features, training_labels)
+        prediction = classifier.predict(test_features)
+        prediction_scores[classifier.__class__.__name__] = accuracy_score(
             test_labels, prediction
         )
     return prediction_scores
 
 
-class ExtraTreesClassifier_Finetuned(ExtraTreesClassifier):
+class ExtraTreesClassifierFinetuned(ExtraTreesClassifier):
     def __init__(self):
         ExtraTreesClassifier.__init__(
             self, n_estimators=102, max_depth=18, random_state=42
@@ -710,7 +735,7 @@ class ExtraTreesClassifier_Finetuned(ExtraTreesClassifier):
 
 classifiers = [
     ExtraTreesClassifier(),
-    ExtraTreesClassifier_Finetuned(),
+    ExtraTreesClassifierFinetuned(),
     LogisticRegression(),
     MLPClassifier(),
     SVC(),
@@ -718,7 +743,7 @@ classifiers = [
 ]
 
 prediction_scores = evaluate_models(
-    train_reduced_df, training_labels, test_reduced_df, test_labels, classifiers
+    reduced_training_data, training_labels, reduced_test_data, test_labels, classifiers
 )
 prediction_scores
 
@@ -729,7 +754,7 @@ prediction_scores
 
 classifiers = [
     "ExtraTreesClassifier",
-    "ExtraTreesClassifier_Finetuned",
+    "ExtraTreesClassifierFinetuned",
     "LogisticRegression",
     "MLPClassifier",
     "SVC",
@@ -744,7 +769,7 @@ train_results_df = pd.concat(
         pd.DataFrame(
             [
                 {
-                    "classifier": "ExtraTreesClassifier_Finetuned",
+                    "classifier": "ExtraTreesClassifierFinetuned",
                     "test_accuracy": searchCV.best_score_,
                 }
             ]
@@ -777,14 +802,7 @@ plt.title("Accuracy on train vs test sets")
 
 plt.xticks(
     ind + width / 2,
-    (
-        "ExtraTreesClassifier",
-        "ExtraTreesClassifier_Finetuned",
-        "LogisticRegression",
-        "MLPClassifier",
-        "SVC",
-        "RandomForestClassifier",
-    ),
+    tuple(classifiers),
     rotation=90,
 )
 
@@ -812,3 +830,6 @@ plt.show()
 
 # + [markdown] pycharm={"name": "#%% md\n"}
 # # Task 3
+
+# + pycharm={"name": "#%%\n"}
+
