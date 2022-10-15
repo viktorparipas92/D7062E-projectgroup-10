@@ -786,7 +786,6 @@ plt.show()
 # - RFECV performs RFE in a cross-validation loop to find the optimal number of features.
 
 # + pycharm={"name": "#%%\n"}
-from sklearn.model_selection import GridSearchCV, StratifiedKFold
 from sklearn.feature_selection import RFECV
 from sklearn import svm
 
@@ -892,7 +891,7 @@ pca_transformed_results = evaluate_all_classifiers(
 pca_transformed_results.sort_values(by=["test_accuracy"])
 
 # + [markdown] pycharm={"name": "#%% md\n"}
-# We got quite different results compared to the original trainign set.
+# We got quite different results compared to the original training set.
 # This time the `LogisticRegression` performed best across all metrics, followed by the `MLPClassifier` and `SVC` and only then the `RandomForestClassifier`.
 #
 # What is more intriguing, however, that all of the classifiers performed worse than without applying PCA to the training dataset! PCA is a linear technique so it can lead to worse results when trying to explore nonlinear relationships.
@@ -902,16 +901,10 @@ pca_transformed_results.sort_values(by=["test_accuracy"])
 # **REASON?**
 
 # + [markdown] pycharm={"name": "#%% md\n"}
-# ## Evaluation on the test set
-
-# + [markdown] pycharm={"name": "#%% md\n"}
-# ### Choice of models to evaluate
+# ### Evaluation on the test set
 
 # + [markdown] pycharm={"name": "#%% md\n"}
 # Let's evaluate the models from Task 2 on the PCA-transformed dataset:
-
-# + [markdown] pycharm={"name": "#%% md\n"}
-# ### Evaluation
 
 # + [markdown] pycharm={"name": "#%% md\n"}
 # We fit the models to the preprocessed and feature-reduced training set, run predictions on the test set run through the same preprocessing and feature reduction and use `accuracy_score` from `sklearn.metrics` to get the final accuracy scores.
@@ -982,10 +975,17 @@ plt.show()
 
 # + [markdown] pycharm={"name": "#%% md\n"}
 # ### Model selection
-# ...
+# We chose the following ensemble classifiers
+# - `GradientBoostingClassifier`
+# - `AdaBoostClassifier`
+# - `BaggingClassifier`
+# - `ExtraTreesClassifier`
+# `RandomForestClassifier` was already discussed in Task 2.
 #
-# A few words about the other classifiers selected:
-# ...
+# The first three were discussed in detail during the lectures and labs, but `ExtraTreesClassifier` deserves a few extra words. It is an extremely randomized ensemble classifier, randomness goes one step further in the way splits are computed.
+# - As in random forests, a random subset of candidate features is used,
+# - but instead of looking for the most discriminative thresholds, thresholds are drawn at random for each candidate feature and the best of these randomly-generated thresholds is picked as the splitting rule.
+# - This usually allows to reduce the variance of the model a bit more, at the expense of a slightly greater increase in bias.
 
 # + pycharm={"name": "#%%\n"}
 from sklearn.ensemble import GradientBoostingClassifier
@@ -1077,18 +1077,12 @@ best_params1, best_score1
 # ## Evaluation on the test set
 
 # + [markdown] pycharm={"name": "#%% md\n"}
-# ### Choice of models to evaluate
-
-# + [markdown] pycharm={"name": "#%% md\n"}
 # We choose to evaluate the models with the top five `test_accuracy` from the model selection section:
 #
 # - `ExtraTreesClassifier`
 # - `ExtraTreesClassifier`with fine-tuned parameters
 # - `BaggingClassifier`
 # - `GradientBoostingClassifier`
-
-# + [markdown] pycharm={"name": "#%% md\n"}
-# ### Evaluation
 
 # + [markdown] pycharm={"name": "#%% md\n"}
 # We
@@ -1191,5 +1185,72 @@ plt.show()
 # The prediction scores for the test set and the scores from the training were fairly close. The use of Cross Validation (and a high number of folds = 10) gave a good estimation of the performance on an unseen dataset.
 #
 # The best performing (in terms of accuracy) classifier on both train & test datasets was the `ExtraTreesClassifier`.
+
+# + [markdown] pycharm={"name": "#%% md\n"}
+# ## Applying ensemble methods along with PCA
+
+# + [markdown] pycharm={"name": "#%% md\n"}
+# Let's run the selected ensemble classifiers on the dataset with reduced features (through PCA) and evaluate them
+
+# + pycharm={"name": "#%%\n"}
+pca_transformed_ensemble_results = evaluate_all_classifiers(
+    pca_reduced_training_data, CLASSIFIERS_TASK_3
+)
+
+# + pycharm={"name": "#%%\n"}
+pca_transformed_ensemble_results.sort_values(by=["test_accuracy"])
+
+# + [markdown] pycharm={"name": "#%% md\n"}
+# We got similar results compared to the original training set, the `ExtraTreesClassifier` performed best across all metrics, followed by the `BaggingClassifier` and `GradientBoostingClassifier`.
 #
+# Similarly to the previously evaluated classification methods, all the ensemble classifiers achieved lower accuracy than without applying PCA to the training dataset. This seems to support our assumption that this dataset simply does not lend itself well to this dimensionality reduction strategy.
+
+# + [markdown] pycharm={"name": "#%% md\n"}
+# ### Evaluation on the test set
+
+# + [markdown] pycharm={"name": "#%% md\n"}
+# Let's evaluate the models from Task 3 on the PCA-transformed dataset:
+
+# + [markdown] pycharm={"name": "#%% md\n"}
+# We fit the models to the preprocessed and feature-reduced training set, run predictions on the test set run through the same preprocessing and feature reduction and use `accuracy_score` from `sklearn.metrics` to get the final accuracy scores.
+
+# + pycharm={"name": "#%%\n"}
+pca_ensemble_prediction_scores = evaluate_models(
+    pca_reduced_training_data,
+    training_labels,
+    pca_reduced_test_data,
+    test_labels,
+    CLASSIFIERS_TASK3_TO_EVALUATE,
+)
+pca_ensemble_prediction_scores
+
+# + [markdown] pycharm={"name": "#%% md\n"}
+# Similarly to the non-PCA case, the hyperparameter-tuned extra trees classifier seems to suffer from overfitting, the similar classifier with default parameters performing better on the test set.
+
+# + [markdown] pycharm={"name": "#%% md\n"}
+# ## Summary
 #
+# - We applied principal component analysis (PCA) and recursive feature elimination (RFE) to the training and test dataset, and compared the results
+# - We moved on with the PCA-transformed dataset
+# - We re-trained the previously explored classifiers from Task2 on the transformed dataset, and compared the results to the originals
+# - We trained some new, ensemble classifiers on the original dataset, tuned some hyperparameters using grid search, and evaluated the results
+# - We re-trained the ensemble classifiers on the PCA-transformed dataset, and compared the results to the originals
+#
+# In the last task and the project we got to try out, most if not all classifiers discussed during the course, as well as other concepts like, hyperparameter-tuning techniques, cross-validation and different performance metrics.
+
+# + [markdown] pycharm={"name": "#%% md\n"}
+# ## Conclusions
+
+# + [markdown] pycharm={"name": "#%% md\n"}
+# - Applying principal component analysis made the performance of all classifiers worse, particularly those that are nonlinear.
+# - RFE showed more promising results than PCA, it would most likely improve the performance of the ensemble classifiers to run them on a dataset with features removed by RFE.
+# - Without PCA,
+#   - the best ensemble classifier from Task 3, the `ExtraTreesClassifier` was on par with the best-performing model from Task 2, the `RandomForestClassifier`.
+#   - Hyperparameter tuning did not improve the accuracy of `ExtraTreesClassifier` on the test set.
+# - Applying PCA,
+#   - the best classifier from Task 2 is `LogisticRegression` but that is thanks to the significantly lower accuracy score achieved by `RandomForestClassifier`,
+#   - when it comes to the ensemble models, `ExtraTreesClassifier` was again on par with `RandomForestClassifier`, but performed worse than `LogisticRegression.
+#
+# Our initial expectation was that ensemble classifiers, particularly `RandomForestClassifier` would perform the best which mostly came true. Some models, `AdaBoostClassifier` in particular performed very poorly with the default parameters and would require significant hyperparameter optimization. **WHY?**
+# Feature reduction was obviously necessary given the wide dataset, but PCA did not improve the performance at all given the nonlinearities, so we would have to turn to other methods.
+# We used grid search coupled with cross-validation, in some cases with multiple rounds, to find the optimal values of the classifiers' most crucial hyperparameters. **OTHER METHODS?**
