@@ -923,35 +923,37 @@ def fit_and_predict(classifier, training_data, training_labels, test_data):
     return prediction
 
 
-pca_comparison_results = []
-for classifier in CLASSIFIERS_TASK2_TO_EVALUATE:
-    prediction_no_pca = fit_and_predict(
-        classifier,
-        training_data,
-        training_labels,
-        test_data,
-    )
+def get_pca_comparison_results(classifiers):
+    pca_comparison_results = []
+    for classifier in classifiers:
+        prediction_no_pca = fit_and_predict(
+            classifier,
+            training_data,
+            training_labels,
+            test_data,
+        )
 
-    prediction_pca = fit_and_predict(
-        classifier,
-        pca_reduced_training_data,
-        training_labels,
-        pca_reduced_test_data,
-    )
+        prediction_pca = fit_and_predict(
+            classifier,
+            pca_reduced_training_data,
+            training_labels,
+            pca_reduced_test_data,
+        )
 
-    pca_comparison_results.append(
-        {
-            "classifier": classifier.__class__.__name__,
-            "test_accuracy": accuracy_score(test_labels, prediction_no_pca),
-            "test_accuracy_pca": accuracy_score(test_labels, prediction_pca),
-        }
-    )
+        pca_comparison_results.append(
+            {
+                "classifier": classifier.__class__.__name__,
+                "test_accuracy": accuracy_score(test_labels, prediction_no_pca),
+                "test_accuracy_pca": accuracy_score(test_labels, prediction_pca),
+            }
+        )
+    pca_comparison_results = pd.DataFrame(pca_comparison_results)
+    pca_comparison_results = pca_comparison_results.set_index("classifier")
+    return pca_comparison_results
 
-pca_comparison_results = pd.DataFrame(pca_comparison_results)
-pca_comparison_results = pca_comparison_results.set_index("classifier")
 
 # + pycharm={"name": "#%%\n"}
-pca_comparison_results
+pca_comparison_results = get_pca_comparison_results(CLASSIFIERS_TASK2_TO_EVALUATE)
 
 # + [markdown] pycharm={"name": "#%% md\n"}
 # And now everything is in place to draw the plot to compare the results
@@ -1228,6 +1230,26 @@ pca_ensemble_prediction_scores = evaluate_models(
     CLASSIFIERS_TASK3_TO_EVALUATE,
 )
 pca_ensemble_prediction_scores
+
+# + [markdown] pycharm={"name": "#%% md\n"}
+# Finally put all the accuracy scores on the test data in one plot, comparing with and without PCA, as well as all the different classifiers evaluated:
+
+# + pycharm={"name": "#%%\n"}
+pca_ensemble_comparison_results = get_pca_comparison_results(
+    CLASSIFIERS_TASK3_TO_EVALUATE
+)
+
+# + pycharm={"name": "#%%\n"}
+all_results = pd.concat(
+    [
+        pca_comparison_results,
+        pca_ensemble_comparison_results,
+    ]
+)
+all_results.plot(kind="bar", figsize=(15, 8))
+plt.ylabel("Accuracy")
+plt.title("Accuracy on test sets with and without PCA")
+plt.show()
 
 # + [markdown] pycharm={"name": "#%% md\n"}
 # ## Conclusions
