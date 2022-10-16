@@ -1197,6 +1197,7 @@ plt.xticks(
     rotation=90,
 )
 plt.legend(loc="best")
+plt.rc("font", size=18)
 plt.show()
 
 # + [markdown] pycharm={"name": "#%% md\n"}
@@ -1249,6 +1250,7 @@ all_results = pd.concat(
 all_results.plot(kind="bar", figsize=(15, 8))
 plt.ylabel("Accuracy")
 plt.title("Accuracy on test sets with and without PCA")
+plt.rc("font", size=18)
 plt.show()
 
 # + [markdown] pycharm={"name": "#%% md\n"}
