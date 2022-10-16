@@ -199,7 +199,7 @@ outlier_handled_data.boxplot(figsize=(18, 7))
 plt.xticks([1], [""])
 
 # + [markdown] pycharm={"name": "#%% md\n"}
-# The boxplot still looks more promising than the original and we managed to maintain all of our features. Now let's move on to handling the missing data.
+# The boxplot still looks more promising than the original, and we managed to maintain all of our features. Now let's move on to handling the missing data.
 
 # + [markdown] pycharm={"name": "#%% md\n"}
 # ### Missing data
@@ -488,7 +488,7 @@ CLASSIFIERS_TASK_2 = [
     LogisticRegression(),
     DecisionTreeClassifier(),
     RandomForestClassifier(),
-    SVC(),
+    SVC(kernel="linear"),
     KNeighborsClassifier(),
     GaussianNB(),
     MLPClassifier(),
@@ -561,7 +561,7 @@ results.sort_values(by=["test_accuracy"])
 # + [markdown] pycharm={"name": "#%% md\n"}
 # Next step is to find optimal hyperparameters for the best performing classifier, `RandomForestClassifier`. We will do so by doing a CV Grid Search and will tune the following hyperparameters of the classifier:
 #
-# - `n_estimators`: controls the number of trees in the forest. Higher can give better performance, but may also increase likelihood of overfitting. The default value is 100, so we will probe around that value.
+# - `n_estimators`: controls the number of trees in the forest. The default value is 100, so we will probe around that value.
 # - `max_depth`: the maximum depth of the tree. The default value is None, i.e. the max depth is not restricted so we first test a wide range.
 # - `bootstrap`: whether bootstrap samples are used when building trees. If False, the whole dataset is used to build each tree.
 
@@ -622,7 +622,7 @@ best_params2, best_score2 = searchCV2.best_params_, searchCV2.best_score_
 best_params2, best_score2
 
 # + [markdown] pycharm={"name": "#%% md\n"}
-# The ideal maximum depth of the tree is still 15, this is the model we're going to evaluate.
+# The ideal maximum depth of the tree is 17, this is the model we're going to evaluate.
 
 # + [markdown] pycharm={"name": "#%% md\n"}
 # ## Evaluation on the test set
@@ -683,7 +683,7 @@ CLASSIFIERS_TASK2_TO_EVALUATE = [
     RandomForestClassifierFinetuned(),
     LogisticRegression(),
     MLPClassifier(),
-    SVC(),
+    SVC(kernel="linear"),
     GaussianNB(),
 ]
 
@@ -751,16 +751,13 @@ plt.xticks(
 plt.legend(loc="best")
 plt.show()
 
-# + [markdown] id="7l_q9R26jeQU" pycharm={"name": "#%% md\n"}
+# + [markdown] pycharm={"name": "#%% md\n"}
 # ### Conclusion
-#
 
-# + [markdown] id="2FhonFTrm94x" pycharm={"name": "#%% md\n"}
+# + [markdown] pycharm={"name": "#%% md\n"}
 # The prediction scores for the test set and the scores from the training were fairly close. The use of Cross Validation (and a high number of folds = 10) gave a good estimation of the performance on an unseen dataset.
 #
 # The best performing (in terms of accuracy) classifier on both train & test datasets was the `RandomForestClassifier`, which seems to neither be over- or underfiting, as the scores on both the training and test data are pretty close.
-#
-# The `LogisticRegression` and `SVC` classifiers seem to be over- or underfitting slightly as their scores on the test set are a bit lower than on the training set.
 #
 # The tuned `RandomForestClassifier` does perform a bit better than the model with standard hyperparameters, it could perhaps be even better with some more tuning and feature reduction, as we will see in Task 3. On the other hand, more tuning could also risk overfitting it to the test set, which is why it's probably best to leave it as is.
 
@@ -787,7 +784,6 @@ plt.show()
 
 # + pycharm={"name": "#%%\n"}
 from sklearn.feature_selection import RFECV
-from sklearn import svm
 
 
 training_data = run_data_pipeline(training_features, std_cap=6, impute_method="mean")
@@ -795,7 +791,7 @@ training_data = run_data_pipeline(training_features, std_cap=6, impute_method="m
 
 def reduce(minimum_number_features, dataframe):
     rfe_selector = RFECV(
-        estimator=svm.SVC(kernel="linear"),
+        estimator=SVC(kernel="linear"),
         cv=StratifiedKFold(n_splits=10),
         min_features_to_select=minimum_number_features,
         step=1,
@@ -843,7 +839,7 @@ parameter_grid = {"pca__n_components": np.arange(10, 100, 5)}
 
 
 def fit_pca_grid_search(parameter_grid):
-    pipeline = Pipeline(steps=[("pca", PCA()), ("svm", svm.SVC(kernel="linear"))])
+    pipeline = Pipeline(steps=[("pca", PCA()), ("svm", SVC(kernel="linear"))])
     search = GridSearchCV(pipeline, parameter_grid, cv=10, n_jobs=4)
     search.fit(training_data, training_labels)
 
@@ -892,13 +888,9 @@ pca_transformed_results.sort_values(by=["test_accuracy"])
 
 # + [markdown] pycharm={"name": "#%% md\n"}
 # We got quite different results compared to the original training set.
-# This time the `LogisticRegression` performed best across all metrics, followed by the `MLPClassifier` and `SVC` and only then the `RandomForestClassifier`.
+# This time the `SVC` (support vector classifier) with a linear kernel performed best across all metrics, followed by `LogisticRegression`, `MLPClassifier` and only then the `RandomForestClassifier`.
 #
-# What is more intriguing, however, that all of the classifiers performed worse than without applying PCA to the training dataset! PCA is a linear technique so it can lead to worse results when trying to explore nonlinear relationships.
-#
-# We can also observe that the cross-validated accuracy score for `SVC` is only 0.707 when running fitting the classifier to the PCA-transformed training dataset, while the grid search gave a higher value, 0.804 when applying PCA to the original training dataset.
-#
-# **REASON?**
+# What is more intriguing, however, that all the classifiers performed worse than without applying PCA to the training dataset! PCA is a linear technique, so it can lead to worse results when trying to explore nonlinear relationships.
 
 # + [markdown] pycharm={"name": "#%% md\n"}
 # ### Evaluation on the test set
@@ -965,10 +957,13 @@ pca_comparison_results
 # And now everything is in place to draw the plot to compare the results
 
 # + pycharm={"name": "#%%\n"}
-results.plot(kind="bar", figsize=(15, 8))
+pca_comparison_results.plot(kind="bar", figsize=(15, 8))
 plt.ylabel("Accuracy")
 plt.title("Accuracy on test sets with and without PCA")
 plt.show()
+
+# + [markdown] pycharm={"name": "#%% md\n"}
+# From this plot we can also draw the same conclusion, PCA did not help with the performance; it resulted in a slight decrease in accuracy for the linear models, and a significant drop in the case of `RandomForestClassifier` for instance.
 
 # + [markdown] pycharm={"name": "#%% md\n"}
 # ## Ensemble methods
@@ -981,6 +976,8 @@ plt.show()
 # - `BaggingClassifier`
 # - `ExtraTreesClassifier`
 # `RandomForestClassifier` was already discussed in Task 2.
+#
+# `GradientBoostingClassifier` is excluded from the later discussions, because it took much longer time than the others to converge while not giving better results.
 #
 # The first three were discussed in detail during the lectures and labs, but `ExtraTreesClassifier` deserves a few extra words. It is an extremely randomized ensemble classifier, randomness goes one step further in the way splits are computed.
 # - As in random forests, a random subset of candidate features is used,
@@ -995,7 +992,7 @@ from sklearn.ensemble import ExtraTreesClassifier
 
 
 CLASSIFIERS_TASK_3 = [
-    GradientBoostingClassifier(),
+    # GradientBoostingClassifier(),
     AdaBoostClassifier(),
     BaggingClassifier(),
     ExtraTreesClassifier(),
@@ -1027,7 +1024,7 @@ ensemble_results.sort_values(by=["test_accuracy"])
 # + [markdown] pycharm={"name": "#%% md\n"}
 # Next step is to find optimal hyperparameters for the best performing classifier, `ExtraTrees`. We will do so by doing a CV Grid Search and will tune the following hyperparameters of the classifier:
 #
-# - `n_estimators`: controls the number of trees in the forest. Higher can give better performance, but may also increase likelihood of overfitting. The default value is 100, so we will probe around that value.
+# - `n_estimators`: controls the number of trees in the forest. The default value is 100, so we will probe around that value.
 # - `max_depth`: the maximum depth of the tree. The default value is None, i.e. the max depth is not restricted so we first test a wide range.
 # - `bootstrap`: whether bootstrap samples are used when building trees. If False, the whole dataset is used to build each tree.
 
@@ -1073,16 +1070,19 @@ best_params1, best_score1
 # + [markdown] pycharm={"name": "#%% md\n"}
 # The ideal maximum depth of the tree is 18, this is the model we're going to evaluate.
 
-# + [markdown] pycharm={"name": "#%% md\n"}
-# ## Evaluation on the test set
+# + pycharm={"name": "#%%\n"}
+best_params1, best_score1 = searchCV.best_params_, searchCV.best_score_
+best_params1, best_score1
 
 # + [markdown] pycharm={"name": "#%% md\n"}
-# We choose to evaluate the models with the top five `test_accuracy` from the model selection section:
+# The ideal maximum depth of the tree is 15, this is the model we're going to evaluate.
+
+# + [markdown] pycharm={"name": "#%% md\n"}
+# We choose to evaluate the models with the top three `test_accuracy` from the model selection section:
 #
 # - `ExtraTreesClassifier`
 # - `ExtraTreesClassifier`with fine-tuned parameters
 # - `BaggingClassifier`
-# - `GradientBoostingClassifier`
 
 # + [markdown] pycharm={"name": "#%% md\n"}
 # We
@@ -1098,14 +1098,15 @@ class ExtraTreesClassifierFineTuned(ExtraTreesClassifier):
     def __init__(self):
         ExtraTreesClassifier.__init__(
             self,
-            n_estimators=101,
-            max_depth=18,
+            n_estimators=best_params1["n_estimators"],
+            max_depth=best_params1["max_depth"],
             random_state=42,
             bootstrap=False,
         )
 
 
 CLASSIFIERS_TASK3_TO_EVALUATE = [
+    AdaBoostClassifier(),
     ExtraTreesClassifierFineTuned(),
     ExtraTreesClassifier(),
     BaggingClassifier(),
@@ -1150,6 +1151,25 @@ training_results
 # And now everything is in place to draw the plot to compare the results
 
 # + pycharm={"name": "#%%\n"}
+index = np.arange(N)
+
+plt.figure(figsize=(15, 8))
+BAR_WIDTH = 0.3
+
+plt.bar(index, training_accuracy_scores, BAR_WIDTH, label="Train")
+plt.bar(index + BAR_WIDTH, test_accuracy_scores, BAR_WIDTH, label="Test")
+
+plt.ylabel("Accuracy")
+plt.title("Accuracy on train vs test sets")
+plt.xticks(
+    index + BAR_WIDTH / 2,
+    tuple(CLASSIFIERS_TASK3_TO_EVALUATE),
+    rotation=90,
+)
+plt.legend(loc="best")
+plt.show()
+
+# + pycharm={"name": "#%%\n"}
 classifier_names = [
     classifier.__class__.__name__ for classifier in CLASSIFIERS_TASK3_TO_EVALUATE
 ]
@@ -1178,15 +1198,6 @@ plt.legend(loc="best")
 plt.show()
 
 # + [markdown] pycharm={"name": "#%% md\n"}
-# ### Conclusion
-#
-
-# + [markdown] pycharm={"name": "#%% md\n"}
-# The prediction scores for the test set and the scores from the training were fairly close. The use of Cross Validation (and a high number of folds = 10) gave a good estimation of the performance on an unseen dataset.
-#
-# The best performing (in terms of accuracy) classifier on both train & test datasets was the `ExtraTreesClassifier`.
-
-# + [markdown] pycharm={"name": "#%% md\n"}
 # ## Applying ensemble methods along with PCA
 
 # + [markdown] pycharm={"name": "#%% md\n"}
@@ -1201,15 +1212,9 @@ pca_transformed_ensemble_results = evaluate_all_classifiers(
 pca_transformed_ensemble_results.sort_values(by=["test_accuracy"])
 
 # + [markdown] pycharm={"name": "#%% md\n"}
-# We got similar results compared to the original training set, the `ExtraTreesClassifier` performed best across all metrics, followed by the `BaggingClassifier` and `GradientBoostingClassifier`.
+# We got similar results compared to the original training set, the `ExtraTreesClassifier` performed best across all metrics, followed by the `BaggingClassifier` and the boosting classifiers.
 #
 # Similarly to the previously evaluated classification methods, all the ensemble classifiers achieved lower accuracy than without applying PCA to the training dataset. This seems to support our assumption that this dataset simply does not lend itself well to this dimensionality reduction strategy.
-
-# + [markdown] pycharm={"name": "#%% md\n"}
-# ### Evaluation on the test set
-
-# + [markdown] pycharm={"name": "#%% md\n"}
-# Let's evaluate the models from Task 3 on the PCA-transformed dataset:
 
 # + [markdown] pycharm={"name": "#%% md\n"}
 # We fit the models to the preprocessed and feature-reduced training set, run predictions on the test set run through the same preprocessing and feature reduction and use `accuracy_score` from `sklearn.metrics` to get the final accuracy scores.
@@ -1225,20 +1230,6 @@ pca_ensemble_prediction_scores = evaluate_models(
 pca_ensemble_prediction_scores
 
 # + [markdown] pycharm={"name": "#%% md\n"}
-# Similarly to the non-PCA case, the hyperparameter-tuned extra trees classifier seems to suffer from overfitting, the similar classifier with default parameters performing better on the test set.
-
-# + [markdown] pycharm={"name": "#%% md\n"}
-# ## Summary
-#
-# - We applied principal component analysis (PCA) and recursive feature elimination (RFE) to the training and test dataset, and compared the results
-# - We moved on with the PCA-transformed dataset
-# - We re-trained the previously explored classifiers from Task2 on the transformed dataset, and compared the results to the originals
-# - We trained some new, ensemble classifiers on the original dataset, tuned some hyperparameters using grid search, and evaluated the results
-# - We re-trained the ensemble classifiers on the PCA-transformed dataset, and compared the results to the originals
-#
-# In the last task and the project we got to try out, most if not all classifiers discussed during the course, as well as other concepts like, hyperparameter-tuning techniques, cross-validation and different performance metrics.
-
-# + [markdown] pycharm={"name": "#%% md\n"}
 # ## Conclusions
 
 # + [markdown] pycharm={"name": "#%% md\n"}
@@ -1251,6 +1242,9 @@ pca_ensemble_prediction_scores
 #   - the best classifier from Task 2 is `LogisticRegression` but that is thanks to the significantly lower accuracy score achieved by `RandomForestClassifier`,
 #   - when it comes to the ensemble models, `ExtraTreesClassifier` was again on par with `RandomForestClassifier`, but performed worse than `LogisticRegression.
 #
-# Our initial expectation was that ensemble classifiers, particularly `RandomForestClassifier` would perform the best which mostly came true. Some models, `AdaBoostClassifier` in particular performed very poorly with the default parameters and would require significant hyperparameter optimization. **WHY?**
+# Our initial expectation was that ensemble classifiers, particularly `RandomForestClassifier` would perform the best which mostly came true. Some models, `AdaBoostClassifier` in particular performed very poorly with the default parameters and would require significant hyperparameter optimization.
 # Feature reduction was obviously necessary given the wide dataset, but PCA did not improve the performance at all given the nonlinearities, so we would have to turn to other methods.
-# We used grid search coupled with cross-validation, in some cases with multiple rounds, to find the optimal values of the classifiers' most crucial hyperparameters. **OTHER METHODS?**
+# We used grid search coupled with cross-validation, in some cases with multiple rounds, to find the optimal values of the classifiers' most crucial hyperparameters.
+
+# + pycharm={"name": "#%%\n"}
+
