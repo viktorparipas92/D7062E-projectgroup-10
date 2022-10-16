@@ -639,7 +639,7 @@ best_params2, best_score2
 # 4.   `SVC`
 # 5.   `GaussianNB`
 #
-# After these five models the accuracy starts to drop off a bit.
+# After these five models the accuracy starts to drop off a bit. However, due to the requirements of the project task we evaluated `KNeighborsClassifiers` and `DecisionTreeClassifier` as well.
 
 # + [markdown] pycharm={"name": "#%% md\n"}
 # ### Evaluation
@@ -685,6 +685,8 @@ CLASSIFIERS_TASK2_TO_EVALUATE = [
     MLPClassifier(),
     SVC(kernel="linear"),
     GaussianNB(),
+    KNeighborsClassifier(),
+    DecisionTreeClassifier(),
 ]
 
 prediction_scores = evaluate_models(
@@ -962,6 +964,7 @@ pca_comparison_results = get_pca_comparison_results(CLASSIFIERS_TASK2_TO_EVALUAT
 pca_comparison_results.plot(kind="bar", figsize=(15, 8))
 plt.ylabel("Accuracy")
 plt.title("Accuracy on test sets with and without PCA")
+plt.rc("font", size=18)
 plt.show()
 
 # + [markdown] pycharm={"name": "#%% md\n"}
